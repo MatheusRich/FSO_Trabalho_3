@@ -4,14 +4,23 @@
 #include <time.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
+#define TRUE 1
+#define FALSE 0
+#define MESSAGE_MAX_SIZE 100
 
+// char *output_string;
 
 typedef struct buffer
 {
   int buffer[50];
   int amount;
-  int bigger_generated;
-  int smaller_generated;
+  int bigger_ocupation;
+  long bigger_generated;
+  long smaller_generated;
+  int first_bigger_number;
+  int first_smaller_number;
+  char *output_string;
 } Buffer;
 
 typedef struct c_args
@@ -19,6 +28,13 @@ typedef struct c_args
   Buffer *buffer;
   char thread_id;
 } C_args;
+
+void cancel_handler(int sig)
+{
+  signal(sig, SIG_IGN);
+
+  exit(2);
+}
 
 int random_number()
 {
@@ -35,8 +51,11 @@ void sleep_ms(int ms)
 void initialize_buffer(Buffer *buffer)
 {
   buffer->amount = 0;
+  buffer->bigger_ocupation = 0;
   buffer->bigger_generated = 0;
   buffer->smaller_generated = 0;
+  buffer->first_bigger_number = TRUE;
+  buffer->output_string = NULL;
 
   int i;
   for(i=0; i<50; i++)
@@ -75,37 +94,74 @@ long read_from_buffer(Buffer *buffer)
   return -1;
 }
 
+void bigger_number_calculation(Buffer *buffer, long number)
+{
+  if(buffer->first_bigger_number || number > buffer->bigger_generated)
+  {
+    buffer->bigger_generated = number;
+    buffer->first_bigger_number = FALSE;
+    printf("NUMBER: %ld\n", number);
+    printf(">> %ld\n", buffer->bigger_generated);
+  }
+}
+
+void log_message(Buffer *buffer, char *message)
+{
+  FILE *output_file = fopen(buffer->output_string, "a");
+
+  if(output_file == NULL)
+  {
+    printf("ERROR: FILE \"%s\" COULD NOT BE OPENED!\n", buffer->output_string);
+    exit(-1);
+  }
+
+  fprintf(output_file, "%s", message);
+  fclose(output_file);
+}
+
 // Thread produtora
 void *producerThread(void *arg)
 {
   Buffer *buffer = (Buffer *)arg;
+
   while(1)
   {
     long number = random_number();
-
     write_to_buffer(buffer, number);
-    sleep_ms(500);
 
-    // Escrever no log
-    printf("[producao]: Numero gerado: %ld\n", number);
+    char message[MESSAGE_MAX_SIZE + 1];
+    snprintf(message, MESSAGE_MAX_SIZE, "[producao]: Numero gerado: %ld\n", number);
+    log_message(buffer, message);
+
+    sleep_ms(100);
   }
+
   return NULL;
 }
 
-
-// void *consumerThread(Buffer *buffer, char thread_id)
 void *consumerThread(void *arg)
 {
   C_args *args = (C_args *)arg;
 
-  long number = read_from_buffer(args->buffer);
+  long number = 0;
 
-  // Calcular maior
-  // bigger_number_calculation(buffer, number);
-  // Calcular menor
-  // Escrever no log
-  printf("[consumo %c]: Numero lido: %ld\n", args->thread_id, number);
-  sleep_ms(150);
+  while (1)
+  {
+    do
+    {
+      number = read_from_buffer(args->buffer);
+    } while(number == -1);
+
+    // Calcular maior
+    bigger_number_calculation(args->buffer, number);
+    // Calcular menor
+    // Escrever no log
+    char message[MESSAGE_MAX_SIZE + 1];
+    snprintf(message, MESSAGE_MAX_SIZE,"[consumo %c]: Numero lido: %ld\n", args->thread_id, number);
+    log_message(args->buffer, message);
+
+    sleep_ms(150);
+  }
 
   return NULL;
 }
@@ -115,28 +171,42 @@ void *consumerThread(void *arg)
 int main(int argc, char **argv)
 {
   srand((unsigned)time(NULL));
+
+  signal(SIGINT, cancel_handler);
   Buffer buffer;
-  pthread_t threads[3];
-  initialize_buffer(&buffer);
-  char *output_string = argv[1];
   C_args args1;
   C_args args2;
+  pthread_t threads[3];
+
+  initialize_buffer(&buffer);
   args1.buffer = &buffer;
   args1.thread_id = 'a';
   args2.buffer = &buffer;
   args2.thread_id = 'b';
-  FILE *output_file = fopen(output_string, "a");
 
-  if (output_file == NULL)
+  buffer.output_string = argv[1];
+
+  if (buffer.output_string == NULL)
   {
-    printf("ERROR: File could not be opened!\n");
-    exit(-1);
+    printf("ERROR: Input a file!\n");
+    return -1;
   }
 
-    pthread_create(&threads[0], NULL, producerThread, (void *)&buffer);
-    pthread_create(&threads[1], NULL, consumerThread, (void *)&args1);
-    pthread_create(&threads[2], NULL, consumerThread, (void *)&args2);
-    sleep_ms(2000);
+  pthread_create(&threads[0], NULL, producerThread, (void *)&buffer);
+  sleep_ms(50);
+  pthread_create(&threads[1], NULL, consumerThread, (void *)&args1);
+  pthread_create(&threads[2], NULL, consumerThread, (void *)&args2);
+
+  sleep_ms(3000);
+  // pthread_join(threads[0], NULL);
+  // pthread_join(threads[1], NULL);
+  // pthread_join(threads[2], NULL);
+
+  printf("[aviso]: Termino solicitado. Aguardando threads...\n");
+  printf("[aviso]: Maior numero gerado: %ld\n", buffer.bigger_generated);
+  printf("[aviso]: Menor numero gerado: %ld\n", buffer.smaller_generated);
+  printf("[aviso]: Maior ocupacao de buffer: %d\n", buffer.bigger_ocupation);
+  printf("[aviso]: Aplicacao encerrada.\n");
 
   return 0;
 }
