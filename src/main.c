@@ -20,6 +20,7 @@ typedef struct buffer
   long smaller_generated;
   int first_bigger_number;
   int first_smaller_number;
+  int first_ocupation;
   char *output_string;
 } Buffer;
 
@@ -55,26 +56,14 @@ void initialize_buffer(Buffer *buffer)
   buffer->bigger_generated = 0;
   buffer->smaller_generated = 0;
   buffer->first_bigger_number = TRUE;
+  buffer->first_smaller_number = TRUE;
+  buffer->first_ocupation = TRUE;
   buffer->output_string = NULL;
 
   int i;
   for(i=0; i<50; i++)
   {
     buffer->buffer[i] = 0;
-  }
-}
-
-void write_to_buffer(Buffer *buffer, int number)
-{
-  for(unsigned int i=0; i<50; i++)
-  {
-    if(buffer->buffer[i] == 0)
-    {
-      buffer->buffer[i] = number;
-      buffer->amount++;
-
-      break;
-    }
   }
 }
 
@@ -103,12 +92,36 @@ void bigger_number_calculation(Buffer *buffer, long number)
   }
 }
 
+void bigger_ocupation_calculation(Buffer *buffer, long number)
+{
+  if(buffer->first_ocupation || number > buffer->bigger_ocupation)
+  {
+    buffer->bigger_ocupation= number;
+    buffer->first_ocupation = FALSE;
+  }
+}
+
 void smaller_number_calculation(Buffer *buffer, long number)
 {
   if(buffer->first_smaller_number || number < buffer->smaller_generated)
   {
     buffer->smaller_generated= number;
     buffer->first_smaller_number = FALSE;
+  }
+}
+
+void write_to_buffer(Buffer *buffer, int number)
+{
+  for(unsigned int i=0; i<50; i++)
+  {
+    if(buffer->buffer[i] == 0)
+    {
+      buffer->buffer[i] = number;
+      buffer->amount++;
+      bigger_ocupation_calculation(buffer, buffer->amount);
+
+      break;
+    }
   }
 }
 
@@ -199,11 +212,11 @@ int main(int argc, char **argv)
   }
 
   pthread_create(&threads[0], NULL, producerThread, (void *)&buffer);
-  sleep_ms(50);
+  sleep_ms(20);
   pthread_create(&threads[1], NULL, consumerThread, (void *)&args1);
   pthread_create(&threads[2], NULL, consumerThread, (void *)&args2);
 
-  sleep_ms(3000);
+  sleep_ms(2000);
   // pthread_join(threads[0], NULL);
   // pthread_join(threads[1], NULL);
   // pthread_join(threads[2], NULL);
