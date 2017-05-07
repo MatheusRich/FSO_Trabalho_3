@@ -34,7 +34,7 @@ void initialize_buffer(Buffer *buffer)
   int i;
   for(i=0; i<50; i++)
   {
-    buffer->buffer[i] = -1;
+    buffer->buffer[i] = 0;
   }
 }
 
@@ -42,7 +42,7 @@ void write_to_buffer(Buffer *buffer, int number)
 {
   for(unsigned int i=0; i<50; i++)
   {
-    if(buffer->buffer[i] == -1)
+    if(buffer->buffer[i] == 0)
     {
       buffer->buffer[i] = number;
       buffer->amount++;
@@ -50,6 +50,21 @@ void write_to_buffer(Buffer *buffer, int number)
       break;
     }
   }
+}
+
+long read_from_buffer(Buffer *buffer)
+{
+  for(unsigned int i=0; i<50; i++)
+  {
+    if(buffer->buffer[i] != 0)
+    {
+      long aux = buffer->buffer[i];
+      buffer->buffer[i] = 0; // Excluding from buffer
+      return aux;
+    }
+  }
+  // #TODO Caso não haja nada a ler, o que fazer??
+  return -1;
 }
 
 // Thread produtora
@@ -63,8 +78,21 @@ void producerThread(Buffer *buffer)
   // Escrever no log
   printf("[producao]: Numero gerado: %ld\n", number);
 }
-// thread consumidora 1
 
+
+// thread consumidora 1
+void consumerThread(Buffer *buffer, char thread_id)
+{
+  long number = read_from_buffer(buffer);
+
+  // Calcular maior
+  // bigger_number_calculation(buffer, number);
+  // Calcular menor
+  // Escrever no log
+  printf("[consumo %c]: Numero lido: %ld\n", thread_id, number);
+  sleep_ms(150);
+
+}
 // thread consumidora 2
 
 int main(int argc, char **argv)
@@ -83,7 +111,10 @@ int main(int argc, char **argv)
     exit(-1);
   }
 
-  producerThread(&buffer);
+  for(unsigned int i=0;i<2;i++)
+    producerThread(&buffer);
+  consumerThread(&buffer, 'a');
+  consumerThread(&buffer, 'b');
 
   return 0;
 }
