@@ -8,7 +8,7 @@ CFLAGS := -Wall
 SRCFILES := $(wildcard src/*.c)
 
 all: $(SRCFILES:src/%.c=obj/%.o)
-	$(CC) $(CFLAGS)  obj/*.o -o bin/binary
+	$(CC) $(CFLAGS) obj/*.o -o bin/binary -lpthread
 
 obj/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@ -I./inc

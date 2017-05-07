@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <pthread.h>
 
 
 typedef struct buffer
@@ -12,6 +13,12 @@ typedef struct buffer
   int bigger_generated;
   int smaller_generated;
 } Buffer;
+
+typedef struct c_args
+{
+  Buffer *buffer;
+  char thread_id;
+} C_args;
 
 int random_number()
 {
@@ -60,6 +67,7 @@ long read_from_buffer(Buffer *buffer)
     {
       long aux = buffer->buffer[i];
       buffer->buffer[i] = 0; // Excluding from buffer
+      buffer->amount--;
       return aux;
     }
   }
@@ -68,41 +76,55 @@ long read_from_buffer(Buffer *buffer)
 }
 
 // Thread produtora
-void producerThread(Buffer *buffer)
+void *producerThread(void *arg)
 {
-  long number = random_number();
+  Buffer *buffer = (Buffer *)arg;
+  while(1)
+  {
+    long number = random_number();
 
-  write_to_buffer(buffer, number);
-  sleep_ms(100);
+    write_to_buffer(buffer, number);
+    sleep_ms(500);
 
-  // Escrever no log
-  printf("[producao]: Numero gerado: %ld\n", number);
+    // Escrever no log
+    printf("[producao]: Numero gerado: %ld\n", number);
+  }
+  return NULL;
 }
 
 
-// thread consumidora 1
-void consumerThread(Buffer *buffer, char thread_id)
+// void *consumerThread(Buffer *buffer, char thread_id)
+void *consumerThread(void *arg)
 {
-  long number = read_from_buffer(buffer);
+  C_args *args = (C_args *)arg;
+
+  long number = read_from_buffer(args->buffer);
 
   // Calcular maior
   // bigger_number_calculation(buffer, number);
   // Calcular menor
   // Escrever no log
-  printf("[consumo %c]: Numero lido: %ld\n", thread_id, number);
+  printf("[consumo %c]: Numero lido: %ld\n", args->thread_id, number);
   sleep_ms(150);
 
+  return NULL;
 }
-// thread consumidora 2
+
+
 
 int main(int argc, char **argv)
 {
   srand((unsigned)time(NULL));
   Buffer buffer;
-
+  pthread_t threads[3];
   initialize_buffer(&buffer);
-
   char *output_string = argv[1];
+  C_args args1;
+  C_args args2;
+  args1.buffer = &buffer;
+  args1.thread_id = 'a';
+  args2.buffer = &buffer;
+  args2.thread_id = 'b';
   FILE *output_file = fopen(output_string, "a");
 
   if (output_file == NULL)
@@ -111,10 +133,10 @@ int main(int argc, char **argv)
     exit(-1);
   }
 
-  for(unsigned int i=0;i<2;i++)
-    producerThread(&buffer);
-  consumerThread(&buffer, 'a');
-  consumerThread(&buffer, 'b');
+    pthread_create(&threads[0], NULL, producerThread, (void *)&buffer);
+    pthread_create(&threads[1], NULL, consumerThread, (void *)&args1);
+    pthread_create(&threads[2], NULL, consumerThread, (void *)&args2);
+    sleep_ms(2000);
 
   return 0;
 }
