@@ -100,8 +100,15 @@ void bigger_number_calculation(Buffer *buffer, long number)
   {
     buffer->bigger_generated = number;
     buffer->first_bigger_number = FALSE;
-    printf("NUMBER: %ld\n", number);
-    printf(">> %ld\n", buffer->bigger_generated);
+  }
+}
+
+void smaller_number_calculation(Buffer *buffer, long number)
+{
+  if(buffer->first_smaller_number || number < buffer->smaller_generated)
+  {
+    buffer->smaller_generated= number;
+    buffer->first_smaller_number = FALSE;
   }
 }
 
@@ -152,10 +159,9 @@ void *consumerThread(void *arg)
       number = read_from_buffer(args->buffer);
     } while(number == -1);
 
-    // Calcular maior
     bigger_number_calculation(args->buffer, number);
-    // Calcular menor
-    // Escrever no log
+    smaller_number_calculation(args->buffer, number);
+
     char message[MESSAGE_MAX_SIZE + 1];
     snprintf(message, MESSAGE_MAX_SIZE,"[consumo %c]: Numero lido: %ld\n", args->thread_id, number);
     log_message(args->buffer, message);
