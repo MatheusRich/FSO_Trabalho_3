@@ -10,14 +10,14 @@
 #define MESSAGE_MAX_SIZE 100
 
 // char *output_string;
+int bigger_ocupation = 0;
+long bigger_generated = 0;
+long smaller_generated = 0;
 
 typedef struct buffer
 {
   int buffer[50];
   int amount;
-  int bigger_ocupation;
-  long bigger_generated;
-  long smaller_generated;
   int first_bigger_number;
   int first_smaller_number;
   int first_ocupation;
@@ -29,6 +29,11 @@ typedef struct c_args
   Buffer *buffer;
   char thread_id;
 } C_args;
+
+void clean_output()
+{
+  remove("file.txt");
+}
 
 void cancel_handler(int sig)
 {
@@ -49,12 +54,22 @@ void sleep_ms(int ms)
   usleep(ms*1000);
 }
 
+void  INThandler(int sig)
+{
+     signal(sig, SIG_IGN);
+     printf("\n\n[aviso]: Termino solicitado. Aguardando threads...\n");
+     sleep_ms(200);
+     printf("[aviso]: Maior numero gerado: %ld\n", bigger_generated);
+     printf("[aviso]: Menor numero gerado: %ld\n", smaller_generated);
+     printf("[aviso]: Maior ocupacao de buffer: %d\n", bigger_ocupation);
+     printf("[aviso]: Aplicacao encerrada.\n");
+
+     exit(0);
+}
+
 void initialize_buffer(Buffer *buffer)
 {
   buffer->amount = 0;
-  buffer->bigger_ocupation = 0;
-  buffer->bigger_generated = 0;
-  buffer->smaller_generated = 0;
   buffer->first_bigger_number = TRUE;
   buffer->first_smaller_number = TRUE;
   buffer->first_ocupation = TRUE;
@@ -81,31 +96,32 @@ long read_from_buffer(Buffer *buffer)
   }
   // #TODO Caso não haja nada a ler, o que fazer??
   return -1;
+  // return read_from_buffer(buffer);
 }
 
 void bigger_number_calculation(Buffer *buffer, long number)
 {
-  if(buffer->first_bigger_number || number > buffer->bigger_generated)
+  if(buffer->first_bigger_number || number > bigger_generated)
   {
-    buffer->bigger_generated = number;
+    bigger_generated = number;
     buffer->first_bigger_number = FALSE;
   }
 }
 
 void bigger_ocupation_calculation(Buffer *buffer, long number)
 {
-  if(buffer->first_ocupation || number > buffer->bigger_ocupation)
+  if(buffer->first_ocupation || number > bigger_ocupation)
   {
-    buffer->bigger_ocupation= number;
+    bigger_ocupation = number;
     buffer->first_ocupation = FALSE;
   }
 }
 
 void smaller_number_calculation(Buffer *buffer, long number)
 {
-  if(buffer->first_smaller_number || number < buffer->smaller_generated)
+  if(buffer->first_smaller_number || number < smaller_generated)
   {
-    buffer->smaller_generated= number;
+    smaller_generated= number;
     buffer->first_smaller_number = FALSE;
   }
 }
@@ -189,9 +205,13 @@ void *consumerThread(void *arg)
 
 int main(int argc, char **argv)
 {
+  // Seeding random_number()
   srand((unsigned)time(NULL));
 
-  signal(SIGINT, cancel_handler);
+  // Cleaning standard output file
+  clean_output();
+
+  signal(SIGINT, INThandler);
   Buffer buffer;
   C_args args1;
   C_args args2;
@@ -208,7 +228,8 @@ int main(int argc, char **argv)
   if (buffer.output_string == NULL)
   {
     printf("ERROR: Input a file!\n");
-    return -1;
+
+    return 0;
   }
 
   pthread_create(&threads[0], NULL, producerThread, (void *)&buffer);
@@ -216,16 +237,9 @@ int main(int argc, char **argv)
   pthread_create(&threads[1], NULL, consumerThread, (void *)&args1);
   pthread_create(&threads[2], NULL, consumerThread, (void *)&args2);
 
-  sleep_ms(2000);
-  // pthread_join(threads[0], NULL);
-  // pthread_join(threads[1], NULL);
-  // pthread_join(threads[2], NULL);
-
-  printf("[aviso]: Termino solicitado. Aguardando threads...\n");
-  printf("[aviso]: Maior numero gerado: %ld\n", buffer.bigger_generated);
-  printf("[aviso]: Menor numero gerado: %ld\n", buffer.smaller_generated);
-  printf("[aviso]: Maior ocupacao de buffer: %d\n", buffer.bigger_ocupation);
-  printf("[aviso]: Aplicacao encerrada.\n");
+  pthread_join(threads[0], NULL);
+  pthread_join(threads[1], NULL);
+  pthread_join(threads[2], NULL);
 
   return 0;
 }
