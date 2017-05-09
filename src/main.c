@@ -32,7 +32,7 @@ typedef struct c_args
 
 void clean_output()
 {
-  remove("file.txt");
+  remove("doc/file.txt");
 }
 
 void cancel_handler(int sig)

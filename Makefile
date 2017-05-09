@@ -24,4 +24,4 @@ clean:
 run:
 		bin/binary
 test:
-		bin/binary file.txt
+		bin/binary doc/file.txt
