@@ -19,6 +19,7 @@ clean:
 	rm -rf bin/*
 	rm -rf doc/*.txt
 	rm -rf *.o
+	rm -f *.txt
 
 run:
 		bin/binary

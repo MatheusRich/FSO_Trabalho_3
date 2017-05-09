@@ -96,7 +96,6 @@ long read_from_buffer(Buffer *buffer)
   }
   // #TODO Caso não haja nada a ler, o que fazer??
   return -1;
-  // return read_from_buffer(buffer);
 }
 
 void bigger_number_calculation(Buffer *buffer, long number)
@@ -233,7 +232,6 @@ int main(int argc, char **argv)
   }
 
   pthread_create(&threads[0], NULL, producerThread, (void *)&buffer);
-  sleep_ms(20);
   pthread_create(&threads[1], NULL, consumerThread, (void *)&args1);
   pthread_create(&threads[2], NULL, consumerThread, (void *)&args2);
 
