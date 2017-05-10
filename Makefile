@@ -22,6 +22,7 @@ clean:
 	rm -f *.txt
 
 run:
-		bin/binary
+	bin/binary doc/$(file)
+
 test:
-		bin/binary doc/file.txt
+	bin/binary doc/saida_padrao.txt
