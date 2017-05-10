@@ -37,7 +37,7 @@ typedef struct c_args
 
 void clean_output()
 {
-  remove("doc/file.txt");
+  remove("doc/saida_padrao.txt");
 }
 
 int random_number()
